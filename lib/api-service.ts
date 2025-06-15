@@ -1,29 +1,62 @@
 // API service for backend communication
 
-// Base URL for API requests - you can change this to your actual backend URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
+// Utility function to handle API timeouts
+const fetchWithTimeout = async (url: string, options: RequestInit & { timeout?: number } = {}) => {
+  const { timeout = 5000, ...fetchOptions } = options
 
-// Generic fetch function with error handling
-async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const controller = new AbortController()
+  const id = setTimeout(() => controller.abort(), timeout)
+
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      headers: {
-        "Content-Type": "application/json",
-        // Add authorization header if needed
-        // "Authorization": `Bearer ${getToken()}`,
-      },
-      ...options,
+    const response = await fetch(url, {
+      ...fetchOptions,
+      signal: controller.signal,
     })
+    clearTimeout(id)
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.message || `API error: ${response.status}`)
+      throw new Error(`HTTP error! status: ${response.status}`)
     }
 
-    return await response.json()
+    const data = await response.json()
+    return data
   } catch (error) {
-    console.error("API request failed:", error)
-    throw error
+    clearTimeout(id)
+    if (error instanceof Error) {
+      if (error.name === "AbortError") {
+        const timeoutError = new Error("Request timeout")
+        timeoutError.name = "TimeoutError"
+        throw timeoutError
+      }
+      throw error
+    }
+    throw new Error("An unknown error occurred")
+  }
+}
+
+// Base API URL
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1"
+
+// Generic fetch function with proper error handling
+async function fetchAPI<T>(endpoint: string, options: RequestInit & { timeout?: number } = {}): Promise<T> {
+  const url = `${API_BASE_URL}${endpoint}`
+  
+  try {
+    const response = await fetchWithTimeout(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+      timeout: 5000, // 5 seconds timeout
+    })
+    return response as T
+  } catch (error) {
+    if (error instanceof Error) {
+      // Preserve the error name and message
+      throw error
+    }
+    throw new Error("An unknown error occurred")
   }
 }
 
@@ -67,7 +100,7 @@ export interface Order {
 }
 
 export interface Settings {
-  id?: string
+  _id?: string          // MongoDB ID
   shopName: string
   shopAddress: string
   contactPhone: string
@@ -75,6 +108,7 @@ export interface Settings {
   closingTime: string
   currency: string
   updatedAt?: string
+  __v?: number         // MongoDB version key
 }
 
 export interface ApiResponse<T> {
@@ -178,11 +212,36 @@ export const orderAPI = {
 
 // Settings API functions
 export const settingsAPI = {
-  get: () => fetchAPI<ApiResponse<Settings>>("/settings"),
+  get: async () => {
+    try {
+      const response = await fetchAPI<Settings>("/settings")
+      if (!response) {
+        throw new Error("No data received from server")
+      }
+      return response
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error
+      }
+      throw new Error("Failed to fetch settings")
+    }
+  },
 
-  update: (settings: Omit<Settings, "id" | "updatedAt">) =>
-    fetchAPI<ApiResponse<Settings>>("/settings", {
-      method: "PUT",
-      body: JSON.stringify(settings),
-    }),
+  update: async (settings: Omit<Settings, "_id" | "updatedAt" | "__v">) => {
+    try {
+      const response = await fetchAPI<Settings>("/settings", {
+        method: "PUT",
+        body: JSON.stringify(settings),
+      })
+      if (!response) {
+        throw new Error("No response from server")
+      }
+      return response
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error
+      }
+      throw new Error("Failed to update settings")
+    }
+  },
 }

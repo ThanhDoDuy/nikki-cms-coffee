@@ -10,6 +10,7 @@ import { useSettings, useUpdateSettings } from "@/lib/hooks/use-settings"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { Sidebar } from "@/components/sidebar"
 import { Toaster } from "@/components/ui/toaster"
+import { toast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -26,16 +27,16 @@ export default function SettingsPage() {
   })
 
   // Fetch settings data
-  const { data: settingsResponse, isLoading, error } = useSettings()
+  const { data: settings, isLoading, error } = useSettings()
 
   const updateMutation = useUpdateSettings()
 
   // Initialize form data when settings are loaded
   useEffect(() => {
-    if (settingsResponse?.data) {
-      setFormData(settingsResponse.data)
+    if (settings) {
+      setFormData(settings)
     }
-  }, [settingsResponse])
+  }, [settings])
 
   const handleChange = (field: keyof Settings, value: string) => {
     setFormData((prev) => ({
@@ -48,9 +49,16 @@ export default function SettingsPage() {
     e.preventDefault()
 
     try {
-      await updateMutation.mutateAsync(formData)
+      // Remove _id, updatedAt, and __v from formData before sending
+      const { _id, updatedAt, __v, ...updateData } = formData
+      await updateMutation.mutateAsync(updateData)
+      toast({
+        title: "Settings Updated",
+        description: "Your settings have been successfully updated.",
+        variant: "default",
+        duration: 3000,
+      })
     } catch (error) {
-      // Error is handled by the mutation hook
       console.error("Settings update error:", error)
     }
   }
