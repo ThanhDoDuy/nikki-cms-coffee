@@ -29,9 +29,9 @@ async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> 
 
 // Types
 export interface Meal {
-  id: string
+  _id: string
   name: string
-  type: string
+  type: "Main meal" | "Dessert" | "Drink" | "Appetizer" | "Side dish"
   originPrice: number
   discountPrice: number
   createdAt?: string
@@ -39,7 +39,7 @@ export interface Meal {
 }
 
 export interface Staff {
-  id: string
+  _id: string
   number: string
   name: string
   shift: string
@@ -49,7 +49,7 @@ export interface Staff {
 }
 
 export interface Order {
-  id: string
+  _id: string
   orderNumber: string
   date: string
   table: string
@@ -59,6 +59,13 @@ export interface Order {
   status?: string
   createdAt?: string
 }
+
+export interface Staff {
+  id: string
+  number: string
+  name: string
+  shift: string
+  status: "active" | "inactive"}
 
 export interface Settings {
   id?: string
@@ -99,13 +106,13 @@ export const mealAPI = {
 
   getById: (id: string) => fetchAPI<ApiResponse<Meal>>(`/meals/${id}`),
 
-  create: (meal: Omit<Meal, "id" | "createdAt" | "updatedAt">) =>
+  create: (meal: Omit<Meal, "_id" | "createdAt" | "updatedAt">) =>
     fetchAPI<ApiResponse<Meal>>("/meals", {
       method: "POST",
       body: JSON.stringify(meal),
     }),
 
-  update: (id: string, meal: Partial<Omit<Meal, "id" | "createdAt" | "updatedAt">>) =>
+  update: (id: string, meal: Partial<Omit<Meal, "_id" | "createdAt" | "updatedAt">>) =>
     fetchAPI<ApiResponse<Meal>>(`/meals/${id}`, {
       method: "PUT",
       body: JSON.stringify(meal),

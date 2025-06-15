@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -15,14 +15,21 @@ interface MealFormProps {
   onClose: () => void
 }
 
+const MEAL_TYPES = ["Main meal", "Dessert", "Drink", "Appetizer", "Side dish"] as const
+
 export function MealForm({ meal, onClose }: MealFormProps) {
   const isEditing = !!meal
 
-  const [formData, setFormData] = useState({
-    name: "",
-    type: "",
-    originPrice: 0,
-    discountPrice: 0,
+  const [formData, setFormData] = useState<{
+    name: string;
+    type: Meal["type"];
+    originPrice: number;
+    discountPrice: number;
+  }>({
+    name: meal?.name || "",
+    type: meal?.type || "Main meal",
+    originPrice: meal?.originPrice || 0,
+    discountPrice: meal?.discountPrice || 0,
   })
 
   const createMutation = useCreateMeal()
@@ -30,22 +37,11 @@ export function MealForm({ meal, onClose }: MealFormProps) {
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending
 
-  // Initialize form data when meal prop changes
-  useEffect(() => {
-    if (meal) {
-      setFormData({
-        name: meal.name,
-        type: meal.type,
-        originPrice: meal.originPrice,
-        discountPrice: meal.discountPrice,
-      })
-    }
-  }, [meal])
-
   const handleChange = (field: string, value: string | number) => {
+    console.log(`Changing ${field} to:`, value)
     setFormData((prev) => ({
       ...prev,
-      [field]: value,
+      [field]: field === "type" ? (value as Meal["type"]) : value,
     }))
   }
 
@@ -53,9 +49,9 @@ export function MealForm({ meal, onClose }: MealFormProps) {
     e.preventDefault()
 
     try {
-      if (isEditing && meal) {
+      if (isEditing && meal?._id) {
         await updateMutation.mutateAsync({
-          id: meal.id,
+          id: meal._id,
           data: formData,
         })
       } else {
@@ -63,7 +59,6 @@ export function MealForm({ meal, onClose }: MealFormProps) {
       }
       onClose()
     } catch (error) {
-      // Error is handled by the mutation hooks
       console.error("Form submission error:", error)
     }
   }
@@ -86,16 +81,20 @@ export function MealForm({ meal, onClose }: MealFormProps) {
 
           <div className="space-y-2">
             <Label htmlFor="type">Type</Label>
-            <Select value={formData.type} onValueChange={(value) => handleChange("type", value)} required>
+            <Select 
+              value={formData.type}
+              onValueChange={(value: Meal["type"]) => handleChange("type", value)}
+              required
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select meal type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Main meal">Main meal</SelectItem>
-                <SelectItem value="Dessert">Dessert</SelectItem>
-                <SelectItem value="Drink">Drink</SelectItem>
-                <SelectItem value="Appetizer">Appetizer</SelectItem>
-                <SelectItem value="Side dish">Side dish</SelectItem>
+                {MEAL_TYPES.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
