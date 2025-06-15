@@ -9,19 +9,22 @@ import { useState } from "react"
 import { useStaff, useDeleteStaff } from "@/lib/hooks/use-staff"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { StaffForm } from "@/components/staff-form"
+import { ConfirmDialog } from "@/components/confirm-dialog"
 import { Toaster } from "@/components/ui/toaster"
 import { Button } from "@/components/ui/button"
 import { Sidebar } from "@/components/sidebar"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { Staff } from "@/lib/api-service"
+import { STATUS_OPTIONS } from "@/lib/constants"
 
 export default function StaffManagement() {
   const [isAddFormOpen, setIsAddFormOpen] = useState(false)
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null)
+  const [deletingStaff, setDeletingStaff] = useState<Staff | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState<string>("")
+  const [statusFilter, setStatusFilter] = useState<string>("all")
 
   // Fetch staff data with pagination, search, and filtering
   const {
@@ -32,14 +35,19 @@ export default function StaffManagement() {
     page: currentPage,
     limit: 10,
     search: searchTerm,
-    status: statusFilter,
+    status: statusFilter === "all" ? undefined : statusFilter,
   })
 
   const deleteMutation = useDeleteStaff()
 
-  const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this staff member?")) {
-      deleteMutation.mutate(id)
+  const handleDelete = (staff: Staff) => {
+    setDeletingStaff(staff)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (deletingStaff) {
+      await deleteMutation.mutateAsync(deletingStaff._id)
+      setDeletingStaff(null)
     }
   }
 
@@ -109,8 +117,11 @@ export default function StaffManagement() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
+                  {STATUS_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <form onSubmit={handleSearch} className="relative">
@@ -161,9 +172,11 @@ export default function StaffManagement() {
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {staffResponse?.data.map((staff) => (
-                      <tr key={staff.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 text-sm text-gray-500">{staff.number}</td>
+                    {staffResponse?.data.map((staff, index) => (
+                      <tr key={staff._id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          {String((currentPage - 1) * 10 + index + 1).padStart(2, "0")}
+                        </td>
                         <td className="px-6 py-4 text-sm text-gray-900">{staff.name}</td>
                         <td className="px-6 py-4 text-sm text-gray-500">{staff.shift}</td>
                         <td className="px-6 py-4 text-sm">
@@ -181,10 +194,10 @@ export default function StaffManagement() {
                           </button>
                           <button
                             className="text-purple-600 hover:text-purple-900 disabled:opacity-50"
-                            onClick={() => handleDelete(staff.id)}
+                            onClick={() => handleDelete(staff)}
                             disabled={deleteMutation.isPending}
                           >
-                            {deleteMutation.isPending ? "Deleting..." : "Delete"}
+                            Delete
                           </button>
                         </td>
                       </tr>
@@ -252,6 +265,15 @@ export default function StaffManagement() {
           }}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={!!deletingStaff}
+        onClose={() => setDeletingStaff(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Staff Member"
+        description={`Are you sure you want to delete "${deletingStaff?.name}"? This action cannot be undone.`}
+        isLoading={deleteMutation.isPending}
+      />
 
       <Toaster />
     </div>

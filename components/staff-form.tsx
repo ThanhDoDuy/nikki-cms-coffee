@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useCreateStaff, useUpdateStaff } from "@/lib/hooks/use-staff"
-import type { Staff } from "@/lib/api-service"
+import type { Staff, ShiftType } from "@/lib/api-service"
+import { SHIFT_OPTIONS, STATUS_OPTIONS } from "@/lib/constants"
 
 interface StaffFormProps {
   staff?: Staff | null
@@ -19,9 +20,8 @@ export function StaffForm({ staff, onClose }: StaffFormProps) {
   const isEditing = !!staff
 
   const [formData, setFormData] = useState({
-    number: "",
     name: "",
-    shift: "",
+    shift: "" as ShiftType,
     status: "active" as "active" | "inactive",
   })
 
@@ -33,8 +33,8 @@ export function StaffForm({ staff, onClose }: StaffFormProps) {
   // Initialize form data when staff prop changes
   useEffect(() => {
     if (staff) {
+      // For editing, use existing staff data
       setFormData({
-        number: staff.number,
         name: staff.name,
         shift: staff.shift,
         status: staff.status,
@@ -55,7 +55,7 @@ export function StaffForm({ staff, onClose }: StaffFormProps) {
     try {
       if (isEditing && staff) {
         await updateMutation.mutateAsync({
-          id: staff.id,
+          id: staff._id,
           data: formData,
         })
       } else {
@@ -63,7 +63,6 @@ export function StaffForm({ staff, onClose }: StaffFormProps) {
       }
       onClose()
     } catch (error) {
-      // Error is handled by the mutation hooks
       console.error("Form submission error:", error)
     }
   }
@@ -73,17 +72,6 @@ export function StaffForm({ staff, onClose }: StaffFormProps) {
       <div className="bg-white p-6 rounded-lg w-full max-w-md">
         <h2 className="text-xl font-semibold mb-4">{isEditing ? "Edit Staff Member" : "Add New Staff"}</h2>
         <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="space-y-2">
-            <Label htmlFor="staff-number">Staff Number</Label>
-            <Input
-              id="staff-number"
-              placeholder="Enter staff number (e.g., 001)"
-              value={formData.number}
-              onChange={(e) => handleChange("number", e.target.value)}
-              required
-            />
-          </div>
-
           <div className="space-y-2">
             <Label htmlFor="staff-name">Staff Name</Label>
             <Input
@@ -97,29 +85,32 @@ export function StaffForm({ staff, onClose }: StaffFormProps) {
 
           <div className="space-y-2">
             <Label htmlFor="staff-shift">Staff Shift</Label>
-            <Select value={formData.shift} onValueChange={(value) => handleChange("shift", value)} required>
+            <Select value={formData.shift} onValueChange={(value) => handleChange("shift", value as ShiftType)} required>
               <SelectTrigger>
                 <SelectValue placeholder="Select shift" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Morning (6AM - 2PM)">Morning (6AM - 2PM)</SelectItem>
-                <SelectItem value="Afternoon (2PM - 10PM)">Afternoon (2PM - 10PM)</SelectItem>
-                <SelectItem value="Night (10PM - 6AM)">Night (10PM - 6AM)</SelectItem>
-                <SelectItem value="Full-time (9AM - 5PM)">Full-time (9AM - 5PM)</SelectItem>
-                <SelectItem value="Part-time">Part-time</SelectItem>
+                {SHIFT_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="staff-status">Staff Status</Label>
-            <Select value={formData.status} onValueChange={(value) => handleChange("status", value)} required>
+            <Select value={formData.status} onValueChange={(value) => handleChange("status", value as "active" | "inactive")} required>
               <SelectTrigger>
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
+                {STATUS_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

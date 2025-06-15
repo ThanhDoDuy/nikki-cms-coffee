@@ -38,11 +38,17 @@ export interface Meal {
   updatedAt?: string
 }
 
+export type ShiftType = 
+  | "Morning (6AM - 2PM)"
+  | "Afternoon (2PM - 10PM)"
+  | "Night (10PM - 6AM)"
+  | "Full-time (9AM - 5PM)"
+  | "Part-time"
+
 export interface Staff {
   _id: string
-  number: string
   name: string
-  shift: string
+  shift: ShiftType
   status: "active" | "inactive"
   createdAt?: string
   updatedAt?: string
@@ -59,13 +65,6 @@ export interface Order {
   status?: string
   createdAt?: string
 }
-
-export interface Staff {
-  id: string
-  number: string
-  name: string
-  shift: string
-  status: "active" | "inactive"}
 
 export interface Settings {
   id?: string
@@ -136,13 +135,13 @@ export const staffAPI = {
 
   getById: (id: string) => fetchAPI<ApiResponse<Staff>>(`/staff/${id}`),
 
-  create: (staff: Omit<Staff, "id" | "createdAt" | "updatedAt">) =>
+  create: (staff: Omit<Staff, "_id" | "createdAt" | "updatedAt">) =>
     fetchAPI<ApiResponse<Staff>>("/staff", {
       method: "POST",
       body: JSON.stringify(staff),
     }),
 
-  update: (id: string, staff: Partial<Omit<Staff, "id" | "createdAt" | "updatedAt">>) =>
+  update: (id: string, staff: Partial<Omit<Staff, "_id" | "createdAt" | "updatedAt">>) =>
     fetchAPI<ApiResponse<Staff>>(`/staff/${id}`, {
       method: "PUT",
       body: JSON.stringify(staff),
